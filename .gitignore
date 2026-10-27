@@ -1,0 +1,13 @@
+# Local environment and secrets
+.venv/
+.env
+
+# Run outputs (HARNESS2_RUNS_DIR defaults to runs/)
+runs/
+
+# Python build and tool caches
+__pycache__/
+*.egg-info/
+build/
+dist/
+.ruff_cache/
