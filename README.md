@@ -10,6 +10,12 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-34A853" alt="License"></a>
 </p>
 
+> [!NOTE]
+> This is an independently maintained fork of
+> [google-research/harness2](https://github.com/google-research/harness2). It
+> is not affiliated with or endorsed by Google, and changes made here are not
+> contributed back to the upstream project.
+
 <p align="center">
   <a href="docs/BENCHMARKS.md#jobbench">
     <img src="assets/harness2-setup.gif" alt="Install, set up, and run JobBench: uv pip install -e '.[render]', harness2-setup jb, then harness2 --bench jb --k 1 --mode parallel. Click for prerequisites and commands." width="640">
@@ -194,7 +200,8 @@ for details; each command also supports `--help`.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions to this fork stay in this fork. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
@@ -205,5 +212,7 @@ upstream licenses; see
 
 ## Disclaimer
 
-This is not an officially supported Google product. This project is not eligible
-for the [Google Open Source Software Vulnerability Rewards Program](https://bughunters.google.com/open-source-security).
+This is not an officially supported Google product. This fork is maintained
+independently of Google and the original authors. It is not eligible for the
+[Google Open Source Software Vulnerability Rewards Program](https://bughunters.google.com/open-source-security);
+report security issues in this fork to its maintainer rather than to Google.

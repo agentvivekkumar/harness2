@@ -1,33 +1,35 @@
 # How to contribute
 
-We'd love to accept your patches and contributions to this project.
+This repository is an independent fork of
+[google-research/harness2](https://github.com/google-research/harness2). It is
+maintained separately and is not affiliated with or endorsed by Google.
+Contributions made here stay in this fork and are not sent to the upstream
+project.
 
 ## Before you begin
 
-### Sign our Contributor License Agreement
+### License
 
-Contributions to this project must be accompanied by a
-[Contributor License Agreement](https://cla.developers.google.com/about) (CLA).
-You (or your employer) retain the copyright to your contribution; this simply
-gives us permission to use and redistribute your contributions as part of the
-project.
+By submitting a contribution, you agree that it is licensed under the
+[Apache License 2.0](LICENSE), the same license as the rest of this
+repository. No Contributor License Agreement (CLA) is required.
 
-If you or your current employer have already signed the Google CLA (even if it
-was for a different project), you probably don't need to do it again.
+### Upstream changes
 
-Visit <https://cla.developers.google.com/> to see your current agreements or to
-sign a new one.
-
-### Review our community guidelines
-
-This project follows
-[Google's Open Source Community Guidelines](https://opensource.google/conduct/).
+If your change also fixes something in the original project and you want it
+there, open a pull request against
+[google-research/harness2](https://github.com/google-research/harness2)
+directly and follow its contribution guidelines.
 
 ## Contribution process
 
-### Code reviews
+### Issues
 
-All submissions, including submissions by project members, require review. We
-use GitHub pull requests for this purpose. Consult
-[GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
-information on using pull requests.
+Report bugs and request features in this fork's
+[issue tracker](https://github.com/agentvivekkumar/harness2/issues).
+
+### Pull requests
+
+Open pull requests against this fork. All submissions require review before
+they are merged. Keep each pull request focused on one change, and run the
+tests in [`tests/`](tests/) before submitting.
