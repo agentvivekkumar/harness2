@@ -16,6 +16,10 @@ classifiers = [
 ]
 authors = [
     { name = "Google LLC" },
+    { name = "Vivek Kumar" },
+]
+maintainers = [
+    { name = "Vivek Kumar" },
 ]
 dependencies = []
 
