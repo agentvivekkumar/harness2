@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modified in this fork: added HARNESS2_APPROVER_MODEL.
 
 """Deployment settings and dependency versions. Shell values override .env."""
 
@@ -100,6 +102,7 @@ SOLVER_MODEL_OC = env("HARNESS2_SOLVER_MODEL", "")
 SOLVER_MODEL_CX = env("HARNESS2_CODEX_MODEL", SOLVER_MODEL_OC.split("/", 1)[-1])
 IMPROVER_MODEL = env("HARNESS2_IMPROVER_MODEL", SOLVER_MODEL_OC)
 JUDGE_MODEL = env("HARNESS2_JUDGE_MODEL", "")
+APPROVER_MODEL = env("HARNESS2_APPROVER_MODEL", "")
 
 DEPENDENCY_PINS = {
     "job-bench-eval": "fa03a17f9ff662f136798a274e10011c3aa00fd0",

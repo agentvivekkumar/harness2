@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modified in this fork: added --review and --rules for human review of hard calls.
 
 """Run one adaptation sweep: every task of a split, domains parallel, tasks in stream order.
 
@@ -33,14 +35,17 @@ installed — so it catches an unset or unbuilt judge, not one an account cannot
 from __future__ import annotations
 
 import argparse
+import dataclasses
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .. import config
-from ..core import schedule
+from ..core import oversight, schedule
 from ..core.proposer import Proposer
+from ..core.spec import resolve_channel_model
 from . import _common as C
 
 
@@ -69,6 +74,22 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print the stream order, the namespaces and the split's domains, then "
         "exit — no rollouts, no sessions, nothing written",
+    )
+    r = p.add_argument_group("human review (off by default)")
+    r.add_argument(
+        "--review",
+        choices=oversight.REVIEW_MODES,
+        default="off",
+        help="who decides the hard calls before a harness enters the library: off adopts "
+        "everything (the published behaviour); ask asks on this terminal; hold keeps it out "
+        "and logs it under <runs>/_reviews/",
+    )
+    r.add_argument(
+        "--rules",
+        type=Path,
+        default=None,
+        help="standing rules, one per line, applied to every adoption by a cheap tool-free "
+        "check (HARNESS2_APPROVER_MODEL, else the selector model); needs --review ask|hold",
     )
     return p
 
@@ -149,6 +170,7 @@ def _main(args: argparse.Namespace) -> int:
     summary_ns = C.summary_namespace(adapter, args.k, seed=args.seed)
     _check_identity(adapter, args, runs_root / summary_ns)
     prop = Proposer(adapter.spec.channels["proposer"], audit_dir=runs_root / "_audit" / summary_ns)
+    review = _review_policy(adapter, args, runs_root, summary_ns)
 
     only = _csv(args.only_domains)
     lanes = args.workers
@@ -170,6 +192,7 @@ def _main(args: argparse.Namespace) -> int:
         only_domains=only,
         max_tasks=args.max_tasks,
         pool_policy="finals",
+        review=review,
     )
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -206,6 +229,40 @@ def _main(args: argparse.Namespace) -> int:
     return 2 if failed else 0
 
 
+def _rules_text(args) -> str:
+    if args.rules is None:
+        return ""
+    text = args.rules.read_text(encoding="utf-8")
+    if not text.strip():
+        raise ValueError(f"--rules {args.rules} is empty")
+    return text
+
+
+def _review_policy(adapter, args, runs_root: Path, summary_ns: str) -> oversight.Policy:
+    """The review policy, with a cheap tool-free checker when standing rules are given."""
+    rules = _rules_text(args)
+    checker = None
+    if rules:
+        base = adapter.spec.channels["selector"]
+        spec = resolve_channel_model(
+            base.kind,
+            config.APPROVER_MODEL or base.model,
+            effort=base.effort,
+            steps=8,
+            timeout=600,
+        )
+        checker = Proposer(
+            dataclasses.replace(spec, tools=False),
+            audit_dir=runs_root / "_audit" / summary_ns / "review",
+        )
+    return oversight.Policy(
+        mode=args.review,
+        rules=rules,
+        checker=checker,
+        log=runs_root / "_reviews" / f"{summary_ns}.jsonl",
+    )
+
+
 def _check_identity(adapter, args, namespace_dir: Path) -> None:
     """Prevent a resumed run or library from silently mixing models or task partitions."""
     identity = {
@@ -223,6 +280,13 @@ def _check_identity(adapter, args, namespace_dir: Path) -> None:
         "domains": sorted(_csv(args.only_domains)),
         "seed": args.seed,
     }
+    if args.review != "off":
+        rules = _rules_text(args)
+        identity["review"] = {
+            "mode": args.review,
+            "rules_sha1": hashlib.sha1(rules.encode()).hexdigest() if rules else "",
+            "approver": config.APPROVER_MODEL if rules else "",
+        }
     namespace_dir.mkdir(parents=True, exist_ok=True)
     path = namespace_dir / "config.json"
     if path.is_file():

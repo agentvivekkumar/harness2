@@ -43,6 +43,7 @@ to `global`. Your account must have access to each configured model.
 | `HARNESS2_SOLVER_MODEL` | Executor model in OpenCode's `provider/model` format |
 | `HARNESS2_IMPROVER_MODEL` | Improver model in the same format; defaults to the executor |
 | `HARNESS2_JUDGE_MODEL` | Bare judge model ID; the adapter supplies the Vertex prefix |
+| `HARNESS2_APPROVER_MODEL` | Optional cheap model for [standing-rule checks](EXPERIMENTS.md#human-review), in the selector channel's format; defaults to the selector model |
 | `HARNESS2_RUNS_DIR` | Output root; defaults to `runs/` |
 
 The provided configuration uses Vertex Gemini executors and judges, and supports

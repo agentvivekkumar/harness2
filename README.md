@@ -163,6 +163,7 @@ through successive Propose–Probe–Compose steps.
 | `--k K --mode parallel` | Probe `K` general and `K` domain-specific candidates, then produce `K` compositions |
 | `--k K --mode sequential` | Refine the harness through `K` successive steps |
 | `--substrate cx` | Use Codex instead of the default OpenCode executor |
+| `--review ask` | Ask a person only for hard calls before adoption; see [human review](docs/EXPERIMENTS.md#human-review) |
 
 After each task, harnessing-level recursion retains the adopted harness and
 evidence-supported lessons to guide future refinement. See the

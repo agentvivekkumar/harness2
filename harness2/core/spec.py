@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modified in this fork: added ChannelSpec.tools.
 
 """The benchmark seam: everything a benchmark must supply, and nothing more.
 
@@ -42,6 +44,7 @@ class ChannelSpec:
     effort: str = "high"
     steps: int = 120
     timeout: int = 3600
+    tools: bool = True
 
     def __post_init__(self) -> None:
         if self.kind not in CHANNELS:

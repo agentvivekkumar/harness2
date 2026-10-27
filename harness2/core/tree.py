@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modified in this fork: added SurfaceSpec.guardrails.
 
 """The c1..c8 component tree: read, validate, write, diff — parametrised by SurfaceSpec.
 
@@ -56,6 +58,7 @@ class SurfaceSpec:
     hook_events: frozenset[str] = frozenset()
     compile_skill_scripts: bool = False
     reject_empty_always_on: bool = False
+    guardrails: tuple[str, ...] = ()
 
     stubs: tuple[tuple[str, str], ...] = ()
 

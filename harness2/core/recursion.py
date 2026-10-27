@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modified in this fork: Compose stages report unmerged conflicts.
 
 """Parallel and sequential task-level recursion.
 
@@ -53,6 +55,7 @@ class Stage:
     attempts: int = 0
     cached: bool = False
     notes: str = ""
+    conflict: str = ""
 
 
 @dataclass
@@ -76,6 +79,13 @@ class ModeResult:
     def fell_back(self) -> list[str]:
         return [s.label for s in self.stages if s.fell_back]
 
+    def conflicts_behind(self, label: str) -> list[str]:
+        """Unmerged conflicts reported by the Compose stages that final `label` descends from."""
+        behind = {label}
+        if self.mode == "seq" and re.fullmatch(r"c\d+", label):
+            behind = {f"c{t}" for t in range(1, int(label[1:]) + 1)}
+        return [f"{s.label}: {s.conflict}" for s in self.stages if s.label in behind and s.conflict]
+
     def to_dict(self) -> dict:
         return {
             "mode": self.mode,
@@ -95,6 +105,7 @@ class ModeResult:
                     "usd": s.usd,
                     "cached": s.cached,
                     "notes": s.notes,
+                    "conflict": s.conflict,
                     "error": (s.error or "")[:400],
                 }
                 for s in self.stages
@@ -228,6 +239,7 @@ def _run_stage(
             harness_tree.write_tree(surface, new, tree.root / "harness")
             continue
         notes = re.search(r"<notes>(.*?)</notes>", reply.text, re.S)
+        conflict = re.search(r"<conflict>(.*?)</conflict>", reply.text, re.S)
         return Stage(
             label=label,
             dim=dim,
@@ -237,6 +249,7 @@ def _run_stage(
             attempts=spent_calls,
             cached=all_cached,
             notes=notes.group(1).strip() if notes else reply.text.strip(),
+            conflict=conflict.group(1).strip() if conflict else "",
         )
 
     return Stage(
@@ -353,8 +366,12 @@ def run_parallel(
     library_dir: Path | None = None,
     propose_workers: int = PHASE_WIDTH,
     rollout_workers: int = PHASE_WIDTH,
+    conflicts: bool = False,
 ) -> ModeResult:
-    """WIDTH: 2k iid candidates from shared evidence, then k INDEPENDENT compositions."""
+    """WIDTH: 2k iid candidates from shared evidence, then k INDEPENDENT compositions.
+
+    `conflicts` asks each composition to report edits it could not merge.
+    """
     surface = adapter.substrate.surface()
     ledger = Ledger(mode="agg", task_id=task_id, k=k)
     for r in base:
@@ -412,7 +429,9 @@ def run_parallel(
                 lambda lbl: _run_stage(
                     label=lbl,
                     dim="AGG",
-                    job=prompts.aggregate(benchmark_prompts, surface, k=k, index=int(lbl[3:])),
+                    job=prompts.aggregate(
+                        benchmark_prompts, surface, k=k, index=int(lbl[3:]), conflicts=conflicts
+                    ),
                     fallback=base_tree,
                     adapter=adapter,
                     prop=prop,
@@ -462,8 +481,12 @@ def run_sequential(
     library_dir: Path | None = None,
     propose_workers: int = 2,
     rollout_workers: int = PHASE_WIDTH,
+    conflicts: bool = False,
 ) -> ModeResult:
-    """DEPTH: k nested passes over the same shared base evidence."""
+    """DEPTH: k nested passes over the same shared base evidence.
+
+    `conflicts` asks each checkpoint composition to report edits it could not merge.
+    """
     surface = adapter.substrate.surface()
     ledger = Ledger(mode="seq", task_id=task_id, k=k)
     for r in base:
@@ -534,9 +557,9 @@ def run_sequential(
         ck = f"c{t}"
 
         comp_job = (
-            prompts.aggregate(benchmark_prompts, surface, k=1, index=1)
+            prompts.aggregate(benchmark_prompts, surface, k=1, index=1, conflicts=conflicts)
             if k == 1
-            else prompts.compose_round(benchmark_prompts, surface, t=t, k=k)
+            else prompts.compose_round(benchmark_prompts, surface, t=t, k=k, conflicts=conflicts)
         )
         comp = _run_stage(
             label=ck,

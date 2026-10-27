@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modified in this fork: added tool-free sessions (ChannelSpec.tools).
 
 """Improver sessions with file access in an isolated context workspace.
 
@@ -220,6 +222,8 @@ class Proposer:
             "--effort",
             self.spec.effort,
         ]
+        if not self.spec.tools:
+            cmd += ["--tools", ""]
         stdin = mission
         if system:
             if len(system) > SYSTEM_ARG_MAX:
@@ -263,13 +267,19 @@ class Proposer:
         prompt = (
             "Read MISSION.md first. Do what it asks. Reply with the requested output as "
             "your final message AND save it verbatim to output/answer.md."
+            if self.spec.tools
+            else "Read MISSION.md first. Do what it asks. Reply with the requested output as "
+            "your final message."
         )
         oc = _opencode_dir()
 
         env = self.env()
-        env["OPENCODE_PERMISSION"] = json.dumps(
-            {"external_directory": {"*": "deny", str(cwd): "allow", f"{cwd}/**": "allow"}}
-        )
+        permission: dict = {
+            "external_directory": {"*": "deny", str(cwd): "allow", f"{cwd}/**": "allow"}
+        }
+        if not self.spec.tools:
+            permission.update({"edit": "deny", "bash": "deny", "webfetch": "deny"})
+        env["OPENCODE_PERMISSION"] = json.dumps(permission)
         env["XDG_DATA_HOME"] = str(cwd / ".ocdata")
         env["XDG_STATE_HOME"] = str(cwd / ".ocstate")
 

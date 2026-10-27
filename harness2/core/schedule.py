@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modified in this fork: adoptions pass the human review gate (core/oversight.py).
 
 """Namespacing, the seeded stream order, and the drivers: one task, one domain, a sweep.
 
@@ -33,7 +35,7 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 from . import library as library_store
-from . import recursion, runmark, selection
+from . import oversight, recursion, runmark, selection
 from . import tree as harness_tree
 from .proposer import Proposer
 from .spec import BenchmarkAdapter, RunView
@@ -220,6 +222,7 @@ def _restore_libraries(
             or not label
             or not sel.get("ok")
             or not library_store.has_experience(sel.get("experience"))
+            or (sel.get("review") or {}).get("adopt") is False
         ):
             continue
         n = Namespace(adapter.spec.name, adapter.substrate.name, mode, k, seed, tag)
@@ -493,6 +496,7 @@ def _run_one_mode(
     surface,
     pool_policy: str,
     res: TaskResult,
+    review: oversight.Policy,
 ) -> None:
     """Run one recursion mode over the shared bases, select a final, and record it on `res`."""
     work_dir = n.task_dir(runs_root, task_id)
@@ -508,6 +512,7 @@ def _run_one_mode(
         run_id_of=lambda lbl, _n=n: _n.run_id(task_id, lbl),
         base_tree=base_tree,
         library_dir=lib_dir,
+        conflicts=review.active,
     )
     res.modes[mode] = r.to_dict()
     candidates = selection.selection_pool(mode, k, r.rollouts, base)
@@ -546,13 +551,37 @@ def _run_one_mode(
     d["chosen_tree_is_base"] = chosen_tree_is_base
     if sel.chosen_label:
         d["harness_fingerprint"] = runmark.fingerprint(work_dir / "harnesses" / sel.chosen_label)
+    adopt = bool(mode_lib) and sel.ok and library_store.has_experience(sel.experience)
+    if adopt:
+        gate = oversight.review_adoption(
+            review,
+            task_id=task_id,
+            mode=mode,
+            k=k,
+            label=sel.chosen_label,
+            surface=surface,
+            base_tree=base_tree,
+            chosen_tree=chosen_tree,
+            experience=sel.experience,
+            why=sel.why,
+            conflicts=r.conflicts_behind(sel.chosen_label),
+        )
+        d["review"] = gate.to_dict()
+        adopt = gate.adopt
+        if gate.by not in ("auto", "rule") or not gate.adopt:
+            print(
+                f"  [{task_id}] {mode}: {sel.chosen_label} "
+                f"{'adopted' if gate.adopt else 'kept out of the library'} "
+                f"({gate.by}: {gate.note or gate.rule or gate.verdict})",
+                flush=True,
+            )
     res.selections[mode] = d
     if not sel.ok:
         res.errors.append(f"{mode}: selection failed: {sel.error}")
     chosen = candidates.get(sel.chosen_label)
     if sel.ok and chosen is not None and not chosen.delivered:
         res.errors.append(f"{mode}: selected run {chosen.run_id} produced no deliverable")
-    if mode_lib and sel.ok and library_store.has_experience(sel.experience):
+    if adopt:
         mode_lib.add(
             task_id,
             chosen_tree,
@@ -577,6 +606,7 @@ def run_task(
     libraries: dict[str, library_store.Library] | None = None,
     selector_prop: Proposer | None = None,
     pool_policy: str = "finals",
+    review: oversight.Policy | None = None,
 ) -> TaskResult:
     """k shared reference executions -> every mode -> blind selection per mode -> summary.json.
 
@@ -650,6 +680,7 @@ def run_task(
                 surface=surface,
                 pool_policy=pool_policy,
                 res=res,
+                review=review or oversight.Policy(),
             )
         except Exception as exc:
             res.modes[mode] = {
@@ -680,6 +711,7 @@ def run_domain(
     tag: str = "",
     selector_prop: Proposer | None = None,
     pool_policy: str = "finals",
+    review: oversight.Policy | None = None,
 ) -> dict:
     """Every task in one domain, in `stream_order()` order, threading the library forward."""
     surface = adapter.substrate.surface()
@@ -712,6 +744,7 @@ def run_domain(
                 libraries=libs,
                 selector_prop=selector_prop,
                 pool_policy=pool_policy,
+                review=review,
             )
             if r.status in ("ok", "skipped"):
                 out["done"] += 1
@@ -794,6 +827,7 @@ def run_sweep(
     pool_policy: str = "finals",
     max_tasks: int | None = None,
     only_tasks: Sequence[str] = (),
+    review: oversight.Policy | None = None,
 ) -> dict:
     """Run domains concurrently, preserving task order after stream filters are applied."""
     ordered_tasks = task_stream(
@@ -825,6 +859,7 @@ def run_sweep(
                 tag=tag,
                 selector_prop=selector,
                 pool_policy=pool_policy,
+                review=review,
             ): d
             for d in order
         }

@@ -41,6 +41,51 @@ harness2-report --bench lab --k 3 --mode sequential
 Use a separate output root when changing the budget or mode to keep experiments
 easy to distinguish.
 
+## Human review
+
+By default every adopted harness enters the library without a person seeing it,
+as in the paper. `--review` adds one gate before an adoption, and a person sees
+only the hard calls:
+
+- **Conflict**: a Compose stage found two edits that the evidence supports but
+  that can't be merged. Composers report this only when review is on.
+- **Weak evidence**: the adopted lesson rates its own confidence low, or gives
+  no confidence.
+- **Guardrail weakened**: compared with the base harness, the adopted harness
+  removes or rewords a guardrail. Guardrails are `guardrails.md` and plugins on
+  OpenCode, and the hooks file on Codex.
+
+Every other adoption goes through automatically.
+
+| Option | Behavior |
+|---|---|
+| `--review off` | Adopt everything (default). Hard calls are still recorded in `summary.json`. |
+| `--review ask` | Ask on the terminal for each hard call. With no terminal attached, behave like `hold`. |
+| `--review hold` | Keep hard calls out of the library and log them to `<runs>/_reviews/<namespace>.jsonl`. |
+| `--rules FILE` | Apply standing rules to every adoption. Requires `ask` or `hold`. |
+
+Standing rules let you decide recurring cases once instead of answering each
+time. Write one rule per line:
+
+```text
+- Always accept new guardrails.
+- Never accept deleting a guardrail.
+```
+
+A cheap model checks each adoption against the rules. It runs without tools and
+sees only a summary of the change. A rule that forbids the adoption keeps it out
+of the library. A rule that covers every hard call adopts it. The check fails
+safe: if its reply has no readable verdict, quotes a rule that isn't in your
+file, or the call fails, the adoption goes to the person. Set
+`HARNESS2_APPROVER_MODEL` to choose the check's model; otherwise it uses the
+selector model.
+
+A declined or held harness stays out of the library when a run resumes. The
+review mode and a hash of the rules become part of the run identity, so changing
+them requires a new `HARNESS2_RUNS_DIR`. Held harnesses can't be approved later
+yet. To adopt them, rerun those tasks in a fresh run directory with
+`--review ask`.
+
 ## Task selection and cost
 
 Model-backed runs incur API costs for executor rollouts and improvement stages.

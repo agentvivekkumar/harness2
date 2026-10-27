@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Modified in this fork: declared guardrails.md as a guardrail file.
 
 """OpencodeSubstrate: the OpenCode agent framework as a solver substrate.
 
@@ -61,6 +63,7 @@ OPENCODE_SURFACE = SurfaceSpec(
     subagent_requires_mode=True,
     plugin_dir="plugin",
     hooks_file=None,
+    guardrails=("guardrails.md",),
     stubs=(
         (
             "scripts/README.md",
